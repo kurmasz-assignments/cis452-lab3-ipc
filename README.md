@@ -48,30 +48,26 @@ modern signaling often uses the POSIX `sigaction` mechanism.
 *Sample Program 1*
 
 ```c
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+void sigHandler(int);
 
-void sigHandler (int);
-
-int main()
-{
-    signal (SIGINT, sigHandler);
-    printf ("waiting...\n");
-    int pause_val = pause();
-    printf("pause() returned %d\n", pause_val);
-    return 0;
+int main() {
+   signal(SIGINT, sigHandler);
+   printf("waiting...\n");
+   int pause_val = pause();
+   printf("pause() returned %d\n", pause_val);
+   return 0;
 }
 
-void
-sigHandler (int sigNum)
-{
-    printf (" received an interrupt.\n");
-    // this is where shutdown code would be inserted
-    sleep (1);
-    printf ("time to exit.\n");
-    exit(0);
+void sigHandler(int sig_num) {
+   printf(" received an interrupt.\n");
+   // this is where shutdown code would be inserted
+   sleep(1);
+   printf("time to exit\n");
+   exit(0);
 }
 ```
 
@@ -246,55 +242,45 @@ lab.
 ```c
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
 #define READ 0
 #define WRITE 1
-#define MAX 1024
 
-int main()
-{
-    int fd[2];
-    ssize_t num;
-    pid_t pid;
-    char str[MAX];
+int main() {
+   int fd[2];
+   int pipe_creation_result;
+   int pid;
 
-    if (pipe (fd) < 0) {
-        perror ("plumbing problem");
-        exit(1);
-    }
-// **point A**
+   pipe_creation_result = pipe(fd);
 
-    if ((pid = fork()) < 0) {
-        perror ("fork failed");
-        exit(1);
-    }
-// **point B**
+   if (pipe_creation_result < 0) {
+      perror("Failed pipe creation\n");
+      exit(1);
+   }
 
-   else if (!pid) {
-        dup2 (fd[WRITE], STDOUT_FILENO);
-// **point C**
-        close (fd[READ]);
-        close (fd[WRITE]);
-// **point D**
-        fgets (str, MAX, stdin);
-        write (STDOUT_FILENO, (const void *) str, (size_t) strlen (str) + 1);
-        exit (0);
-    }
+   pid = fork();
 
-    dup2 (fd[READ], STDIN_FILENO);
-// **point C**
-    close (fd[READ]);
-    close (fd[WRITE]);
-// **point D**
-    num = read (STDIN_FILENO, (void *) str, (size_t)  sizeof (str));
-    if (num > MAX) {
-        perror ("pipe read error\n");
-        exit(1);
-    }
-    puts (str);
-    return 0;
+   if (pid < 0) {
+      // Fork failed
+      perror("Fork failed");
+      exit(1);
+   }
+
+   int output = 3;
+   int input;
+
+   if (pid == 0) {
+      // Child process
+      write(fd[1], &output, sizeof(int));
+      printf("Child wrote [%d]\n", output);
+   } else {
+      read(fd[0], &input, sizeof(int));
+      printf("Parent received [%d] from child process\n", input);
+   }
+
+   return 0;
 }
 ```
 
